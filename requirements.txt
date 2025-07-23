@@ -1,3 +1,6 @@
 aiogram==2.24
+aiohttp==3.8.1
+yarl==1.7.2
+multidict==5.2.0
 requests
 beautifulsoup4
