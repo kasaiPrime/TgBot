@@ -62,41 +62,35 @@ async def start_cmd(message: types.Message):
     keyboard = types.InlineKeyboardMarkup()
     keyboard.add(
         types.InlineKeyboardButton("🌱 STOCK SEED", callback_data="stock_seed"),
-        types.InlineKeyboardButton("⚙️ STOCK GEAR", callback_data="stock_gear"),
+        types.InlineKeyboardButton("⚙️ STOCK GEAR", callback_data="stock_gear")
     )
     keyboard.add(
         types.InlineKeyboardButton("🥚 EGG STOCK", callback_data="stock_egg"),
         types.InlineKeyboardButton("🧘 ZEN EVENT", callback_data="zen_event")
     )
     keyboard.add(types.InlineKeyboardButton("☁️ WEATHER", callback_data="weather"))
-    await message.answer("Выбери категорию:", reply_markup=keyboard)
+    await message.answer("🌿 Добро пожаловать! Выберите категорию:", reply_markup=keyboard)
 
 @dp.callback_query_handler(lambda c: c.data in ["stock_seed", "stock_gear", "stock_egg", "zen_event", "weather"])
 async def handle_callback(callback_query: types.CallbackQuery):
     data = fetch_data()
     action = callback_query.data
     if action == "stock_seed":
-        text = "🌱 <b>Семена в наличии:</b>
-" + "
-".join(data["seed"]) if data["seed"] else "Нет семян."
+        text = "🌱 <b>Семена в наличии:</b>\n" + "\n".join(data["seed"]) if data["seed"] else "🌱 Нет семян в наличии."
     elif action == "stock_gear":
-        text = "⚙️ <b>Предметы Gear в наличии:</b>
-" + "
-".join(data["gear"]) if data["gear"] else "Нет Gear."
+        text = "⚙️ <b>Предметы Gear в наличии:</b>\n" + "\n".join(data["gear"]) if data["gear"] else "⚙️ Нет Gear в наличии."
     elif action == "stock_egg":
-        text = "🥚 <b>Яйца в наличии:</b>
-" + "
-".join(data["egg"]) if data["egg"] else "Нет яиц."
+        text = "🥚 <b>Яйца в наличии:</b>\n" + "\n".join(data["egg"]) if data["egg"] else "🥚 Нет яиц в наличии."
     elif action == "zen_event":
         kb = types.InlineKeyboardMarkup()
         kb.add(
             types.InlineKeyboardButton("🧘 Статус ивента", callback_data="zen_status"),
             types.InlineKeyboardButton("📦 Сток ивента", callback_data="zen_stock")
         )
-        await callback_query.message.edit_text("🧘 ZEN EVENT:", reply_markup=kb)
+        await callback_query.message.edit_text("🧘 Выберите информацию по ZEN EVENT:", reply_markup=kb)
         return
     elif action == "weather":
-        text = data["weather"] or "Нет информации о погоде."
+        text = data["weather"] or "☁️ Нет информации о погоде."
 
     await callback_query.message.edit_text(text, parse_mode="HTML")
 
@@ -104,12 +98,9 @@ async def handle_callback(callback_query: types.CallbackQuery):
 async def zen_sub(callback_query: types.CallbackQuery):
     data = fetch_data()
     if callback_query.data == "zen_status":
-        await callback_query.message.edit_text(f"🧘 Статус ZEN ивента:
-{data['zen_status']}")
+        await callback_query.message.edit_text(f"🧘 <b>Статус ZEN ивента:</b>\n{data['zen_status']}", parse_mode="HTML")
     else:
-        text = "📦 <b>Сток ZEN ивента:</b>
-" + "
-".join(data["zen_stock"]) if data["zen_stock"] else "Пусто."
+        text = "📦 <b>Сток ZEN ивента:</b>\n" + "\n".join(data["zen_stock"]) if data["zen_stock"] else "📦 Пусто."
         await callback_query.message.edit_text(text, parse_mode="HTML")
 
 if __name__ == '__main__':
