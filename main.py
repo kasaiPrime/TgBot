@@ -84,7 +84,7 @@ async def handle_callback(callback_query: types.CallbackQuery):
 " + "
 .join(data["gear"]) if data["gear"] else "Нет Gear."
     elif action == "stock_egg":
-        text = "🥚 <b>Яйца в наличии:</b>
+        text = "🥚Яйца в наличии:</b>
 " + "
 .join(data["egg"]) if data["egg"] else "Нет яиц."
     elif action == "zen_event":
@@ -104,7 +104,7 @@ async def handle_callback(callback_query: types.CallbackQuery):
 async def zen_sub(callback_query: types.CallbackQuery):
     data = fetch_data()
     if callback_query.data == "zen_status":
-        await callback_query.message.edit_text(f"🧘 Статус ZEN ивента:
+        await callback_query.message.edit_text(f"🧘 Статус ZEN ивента:"
 {data['zen_status']}")
     else:
         text = "📦 <b>Сток ZEN ивента:</b>
