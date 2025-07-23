@@ -105,9 +105,9 @@ async def zen_sub(callback_query: types.CallbackQuery):
     data = fetch_data()
     if callback_query.data == "zen_status":
         await callback_query.message.edit_text(f"🧘 Статус ZEN ивента:"
-{data['zen_status']}")
+{data['zen_status']})
     else:
-        text = "📦 <b>Сток ZEN ивента:</b>
+        text = "📦Сток ZEN ивента:"</b>
 " + "
 .join(data["zen_stock"]) if data["zen_stock"] else "Пусто."
         await callback_query.message.edit_text(text, parse_mode="HTML")
