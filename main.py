@@ -78,7 +78,7 @@ async def handle_callback(callback_query: types.CallbackQuery):
     if action == "stock_seed":
         text = "🌱 <b>Семена в наличии":</b>
 " + "
-".join(data["seed"]) if data["seed"] else "Нет семян."
+".join(data["seed"]) if data["seed"] else "Нет семян.""
     elif action == "stock_gear":
         text = "⚙️ <b>Предметы Gear в наличии:</b>
 " + "
