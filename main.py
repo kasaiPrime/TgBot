@@ -7,7 +7,7 @@ from telegram.ext import (
 )
 
 # 🔐 ЗАМЕНИ на свой токен
-TOKEN = "ВСТАВЬ_СЮДА_СВОЙ_ТОКЕН"
+TOKEN = "7918239240:AAFMiTPq8mut9W1-xmxxi69xoNyHFB_zAoE"
 
 logging.basicConfig(level=logging.INFO)
 
