@@ -1,157 +1,106 @@
 import logging
 import json
-import asyncio
-import requests
+import aiohttp
+from aiogram import Bot, Dispatcher, executor, types
 from bs4 import BeautifulSoup
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.ext import (
-    Updater, CommandHandler, CallbackQueryHandler, CallbackContext
-)
 
-TOKEN = "7918239240:AAFMiTPq8mut9W1-xmxxi69xoNyHFB_zAoE"
+API_TOKEN = '7918239240:AAFMiTPq8mut9W1-xmxxi69xoNyHFB_zAoE'  # ← ВСТАВЬ СЮДА ТОКЕН
 
-logging.basicConfig(level=logging.INFO)
+bot = Bot(token=API_TOKEN)
+dp = Dispatcher(bot)
 
 URL = "https://virastisad.ru/stock/"
-FAV_FILE = "favorites.json"
+favourites_file = "favourites.json"
 
-# — Утилиты —
-def fetch_html():
-    return requests.get(URL).text
+# Логгинг
+logging.basicConfig(level=logging.INFO)
 
-def parse_lines(keyword):
-    soup = BeautifulSoup(fetch_html(), "html.parser")
-    lines = []
-    for li in soup.find_all("li"):
-        text = li.get_text(strip=True)
-        if keyword in text:
-            lines.append(text)
-    return lines
-
-def get_all_stock_items():
-    return [li.get_text(strip=True) 
-            for li in BeautifulSoup(fetch_html(), "html.parser").find_all("li")
-            if "[" in li.get_text()]
-
-# — Избранное —
-def load_favs():
+# Чтение избранных
+def load_favourites():
     try:
-        return json.load(open(FAV_FILE))
+        with open(favourites_file, "r") as f:
+            return json.load(f)
     except:
         return {}
 
-def save_favs(d):
-    json.dump(d, open(FAV_FILE, "w"), indent=2)
+def save_favourites(data):
+    with open(favourites_file, "w") as f:
+        json.dump(data, f, indent=2)
 
-# — Функции меню —
-def get_stock_msg(category):
-    emoji = {"seed": "🌱", "gear": "⚙️", "egg": "🥚"}
-    items = parse_lines(category)
-    lines = []
-    for text in items:
-        name, qty = text.rsplit(" ", 1)
-        status = "[IN STOCK ✅]" if "[IN STOCK]" in text else "[OUT STOCK ❌]"
-        lines.append(f"{emoji.get(category,'')} <b>{name}</b> {status} {qty}")
-    return "\n".join(lines) if lines else "Пока пусто ❌"
+# Парсинг страницы
+async def fetch_data():
+    async with aiohttp.ClientSession() as session:
+        async with session.get(URL) as response:
+            html = await response.text()
+            return BeautifulSoup(html, "html.parser")
 
-def get_weather():
-    soup = BeautifulSoup(fetch_html(), "html.parser")
-    p = soup.find("h2", string=lambda x: x and "WEATHER" in x)
-    txt = p.find_next_sibling("p").get_text(strip=True) if p else ""
-    return f"☁️ <b>Погода:</b>\n{txt}"
+# Сбор всех блоков
+async def get_all_blocks():
+    soup = await fetch_data()
 
-def get_zen_status():
-    soup = BeautifulSoup(fetch_html(), "html.parser")
-    p = soup.find("h2", string=lambda x: x and "ZEN EVENT" in x)
-    txt = p.find_next_sibling("p").get_text(strip=True) if p else ""
-    if "active" in txt.lower():
-        return f"✅ <b>ZEN EVENT АКТИВЕН</b>\n🕒 {txt}"
-    else:
-        return f"❌ <b>ZEN EVENT ЗАКОНЧИЛСЯ</b>\n🕒 {txt}"
+    def extract(section_id):
+        block = soup.find("div", {"id": section_id})
+        if not block:
+            return "⚠️ Не найдено"
+        items = []
+        for i in block.find_all("li"):
+            name = i.find("span", class_="stock-name").text.strip()
+            amount = i.find("span", class_="stock-count")
+            if amount:
+                items.append(f"✅ {name} [{amount.text.strip()}]")
+            else:
+                items.append(f"❌ {name} [OUT STOCK]")
+        return "\n".join(items) if items else "❌ Пусто"
 
-def get_zen_stock():
-    soup = BeautifulSoup(fetch_html(), "html.parser")
-    items = [li.get_text(strip=True) for li in soup.find("h2", string=lambda x: x and "ZEN EVENT" in x).find_next_sibling("ul").find_all("li")]
-    return "\n".join(items) if items else "Нет стока."
+    return {
+        "seed": extract("seed-stock"),
+        "gear": extract("gear-stock"),
+        "egg": extract("egg-stock"),
+        "weather": extract("weather-stock"),
+        "zen": {
+            "event": extract("zen-event-status"),
+            "stock": extract("zen-event-stock")
+        }
+    }
 
-# — Основные хендлеры —
-def cmd_main(update: Update, ctx: CallbackContext):
-    kb = InlineKeyboardMarkup([[InlineKeyboardButton("🌱 STOCK SEED", callback_data="seed")],
-                               [InlineKeyboardButton("⚙️ STOCK GEAR", callback_data="gear")],
-                               [InlineKeyboardButton("🥚 EGG STOCK", callback_data="egg")],
-                               [InlineKeyboardButton("☁️ WEATHER", callback_data="weather")],
-                               [InlineKeyboardButton("🧘 ZEN EVENT", callback_data="zen")],
-                               [InlineKeyboardButton("⭐ Избранное", callback_data="favorites")]])
-    update.message.reply_text("📦 Выбери категорию:", reply_markup=kb)
+# Команда /main
+@dp.message_handler(commands=['main'])
+async def main_menu(msg: types.Message):
+    kb = types.InlineKeyboardMarkup()
+    kb.add(types.InlineKeyboardButton("🌱 STOCK SEED", callback_data="seed"))
+    kb.add(types.InlineKeyboardButton("⚙️ STOCK GEAR", callback_data="gear"))
+    kb.add(types.InlineKeyboardButton("🥚 EGG STOCK", callback_data="egg"))
+    kb.add(types.InlineKeyboardButton("☁️ WEATHER", callback_data="weather"))
+    kb.add(types.InlineKeyboardButton("🧘 ZEN EVENT", callback_data="zen_event"))
+    await msg.answer("📦 Главное меню:", reply_markup=kb)
 
-def cb_query(update: Update, ctx: CallbackContext):
-    query = update.callback_query
-    query.answer()
-    data = query.data
-    if data in ["seed", "gear", "egg"]:
-        text = get_stock_msg(data)
-        query.edit_message_text(text, parse_mode="HTML")
-    elif data == "weather":
-        query.edit_message_text(get_weather(), parse_mode="HTML")
-    elif data == "zen":
-        kb = InlineKeyboardMarkup([[InlineKeyboardButton("📊 Статус", callback_data="zen_status")],
-                                   [InlineKeyboardButton("📦 Сток", callback_data="zen_stock")],
-                                   [InlineKeyboardButton("⬅️ Назад", callback_data="back")]])
-        query.edit_message_text("🧘 ZEN EVENT:", reply_markup=kb)
-    elif data == "zen_status":
-        query.edit_message_text(get_zen_status(), parse_mode="HTML")
-    elif data == "zen_stock":
-        query.edit_message_text(get_zen_stock(), parse_mode="HTML")
-    elif data == "back":
-        cmd_main(update, ctx)
-    elif data == "favorites":
-        html = fetch_html()
-        items = get_all_stock_items()
-        favs = load_favs()
-        uid = str(query.from_user.id)
-        user_favs = favs.get(uid, [])
-        kb = InlineKeyboardMarkup()
-        for itm in items:
-            mark = "✅" if itm in user_favs else "❌"
-            kb.add(InlineKeyboardButton(f"{mark} {itm}", callback_data=f"fav|{itm}"))
-        query.edit_message_text("⭐ Избранное — выбери:", reply_markup=kb)
-    elif data.startswith("fav|"):
-        _, itm = data.split("|",1)
-        uid = str(query.from_user.id)
-        favs = load_favs()
-        user_favs = favs.get(uid, [])
-        if itm in user_favs: user_favs.remove(itm)
-        else: user_favs.append(itm)
-        favs[uid] = user_favs
-        save_favs(favs)
-        query.answer("Обновлено")
-        cb_query(update, ctx)
+# Коллбэки
+@dp.callback_query_handler(lambda c: c.data)
+async def handle_callback(call: types.CallbackQuery):
+    data = await get_all_blocks()
+    faves = load_favourites()
+    user_id = str(call.from_user.id)
 
-# — Мониторинг стока —
-async def monitor(updater: Updater):
-    prev = {}
-    while True:
-        items = get_all_stock_items()
-        favs = load_favs()
-        for uid, uitems in favs.items():
-            for itm in uitems:
-                for cur in items:
-                    if itm == cur and "[IN STOCK]" in cur:
-                        if prev.get(uid, {}).get(itm) != "IN":
-                            updater.bot.send_message(int(uid), f"🔔 *{itm}* теперь в наличии!", parse_mode="Markdown")
-                            prev.setdefault(uid, {})[itm] = "IN"
-        await asyncio.sleep(300)
+    if call.data == "zen_event":
+        kb = types.InlineKeyboardMarkup()
+        kb.add(types.InlineKeyboardButton("📅 Статус", callback_data="zen_status"))
+        kb.add(types.InlineKeyboardButton("📦 Сток", callback_data="zen_stock"))
+        await call.message.edit_text("🧘 Выберите:", reply_markup=kb)
+        return
 
-def main():
-    bot = Updater(TOKEN, use_context=True)
-    dp = bot.dispatcher
-    dp.add_handler(CommandHandler("main", cmd_main))
-    dp.add_handler(CallbackQueryHandler(cb_query))
-    # фоновый таск
-    loop = asyncio.get_event_loop()
-    loop.create_task(monitor(bot))
-    bot.start_polling()
-    bot.idle()
+    if call.data == "zen_status":
+        await call.message.edit_text(f"🧘‍♂️ ZEN STATUS:\n\n{data['zen']['event']}")
+    elif call.data == "zen_stock":
+        await call.message.edit_text(f"🎁 ZEN STOCK:\n\n{data['zen']['stock']}")
+    elif call.data == "seed":
+        await call.message.edit_text(f"🌱 SEED STOCK:\n\n{data['seed']}")
+    elif call.data == "gear":
+        await call.message.edit_text(f"⚙️ GEAR STOCK:\n\n{data['gear']}")
+    elif call.data == "egg":
+        await call.message.edit_text(f"🥚 EGG STOCK:\n\n{data['egg']}")
+    elif call.data == "weather":
+        await call.message.edit_text(f"☁️ CURRENT WEATHER:\n\n{data['weather']}")
 
-if __name__ == "__main__":
-    main()
+# Запуск
+if __name__ == '__main__':
+    executor.start_polling(dp, skip_updates=True)
