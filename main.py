@@ -78,15 +78,15 @@ async def handle_callback(callback_query: types.CallbackQuery):
     if action == "stock_seed":
         text = "🌱 <b>Семена в наличии:"</b>
 " + "
-".join(data["seed"]) if data["seed"] else "Нет семян.""
+.join(data["seed"]) if data["seed"] else "Нет семян."
     elif action == "stock_gear":
         text = "⚙️ <b>Предметы Gear в наличии:"</b>
 " + "
-".join(data["gear"]) if data["gear"] else "Нет Gear."
+.join(data["gear"]) if data["gear"] else "Нет Gear."
     elif action == "stock_egg":
         text = "🥚 <b>Яйца в наличии:</b>
 " + "
-".join(data["egg"]) if data["egg"] else "Нет яиц."
+.join(data["egg"]) if data["egg"] else "Нет яиц."
     elif action == "zen_event":
         kb = types.InlineKeyboardMarkup()
         kb.add(
@@ -109,7 +109,7 @@ async def zen_sub(callback_query: types.CallbackQuery):
     else:
         text = "📦 <b>Сток ZEN ивента:</b>
 " + "
-".join(data["zen_stock"]) if data["zen_stock"] else "Пусто."
+.join(data["zen_stock"]) if data["zen_stock"] else "Пусто."
         await callback_query.message.edit_text(text, parse_mode="HTML")
 
 if __name__ == '__main__':
