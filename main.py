@@ -84,7 +84,7 @@ async def handle_callback(callback_query: types.CallbackQuery):
 " + "
 .join(data["gear"]) if data["gear"] else "Нет Gear."
     elif action == "stock_egg":
-        text = "🥚Яйца в наличии:</b>
+        text = "🥚Яйца в наличии:"</b>
 " + "
 .join(data["egg"]) if data["egg"] else "Нет яиц."
     elif action == "zen_event":
